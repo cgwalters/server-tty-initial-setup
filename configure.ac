@@ -31,8 +31,19 @@ LT_INIT([disable-static])
 
 PKG_PROG_PKG_CONFIG
 
-GSYSTEM_DEPENDENCY="gsystem >= 2014.1"
+GSYSTEM_DEPENDENCY="libgsystem >= 2014.1"
 PKG_CHECK_MODULES(BUILDDEP_GSYSTEM, $GSYSTEM_DEPENDENCY)
+
+AC_ARG_WITH([systemdsystemunitdir],
+            AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
+            [],
+            [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
+if test "x$with_systemdsystemunitdir" != "xno"; then
+  AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
+fi
+have_systemd=no
+AS_IF([test -n "$systemdsystemunitdir"], [ have_systemd=yes ])
+AM_CONDITIONAL(HAVE_SYSTEMD, [ test x$have_systemd = xyes ])
 
 AC_CONFIG_FILES([
 Makefile
@@ -43,5 +54,6 @@ echo "
     $PACKAGE $VERSION
     ===============
 
+    systemd:		$have_systemd
 "
 echo ""

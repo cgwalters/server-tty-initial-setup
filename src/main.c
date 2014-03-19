@@ -23,6 +23,7 @@
 #include <libgsystem.h>
 #include <glib-unix.h>
 #include <unistd.h>
+#include <gio/gio.h>
 
 #include <glib/gi18n.h>
 
@@ -101,7 +102,9 @@ do_initial_setup (GCancellable     *cancellable,
 
   for (i = 0; i < max_passwd_attempts; i++)
     {
-      if (!g_spawn_sync (NULL, passwd_root_argv, NULL,
+      int estatus;
+
+      if (!g_spawn_sync (NULL, (char**)passwd_root_argv, NULL,
                          G_SPAWN_CHILD_INHERITS_STDIN,
                          NULL, NULL, NULL, NULL,
                          &estatus, error))
@@ -137,16 +140,18 @@ main (int    argc,
   gs_unref_variant GVariant *root_account_locked_reply = NULL;
   gs_unref_variant GVariant *root_account_locked_property = NULL;
   gs_unref_variant GVariant *root_account_locked_value = NULL;
-  gs_unref_object GObject *initial_setup_done_file = NULL;
+  gs_unref_object GFile *initial_setup_done_file = NULL;
   const char *root_account_path = NULL;
   gboolean have_user_accounts;
   gboolean root_is_locked;
 
+#if 0
   bindtextdomain (PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (PACKAGE, "UTF-8");
   textdomain (PACKAGE);
+#endif
 
-  initial_setup_done_file = g_file_file_new_for_path (LOCALSTATEDIR "initial-setup-done");
+  initial_setup_done_file = g_file_new_for_path ("/var/initial-setup-done");
 
   if (g_file_query_exists (initial_setup_done_file, NULL))
     goto out;
@@ -162,7 +167,7 @@ main (int    argc,
 
   user_list = g_dbus_proxy_call_sync (accountsservice, "ListCachedUsers",
                                       NULL, 0, -1, cancellable, error);
-  if (!reply)
+  if (!user_list)
     goto out;
   
   have_user_accounts = g_variant_n_children (user_list) > 0;
