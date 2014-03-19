@@ -26,6 +26,8 @@
 
 #include <glib/gi18n.h>
 
+#define INITIAL_SETUP_DONE_MSGID "73de127e872e6c6e1a46160a6cc286b5"
+
 static GHashTable *
 parse_os_release (const char *contents,
                   const char *split)
@@ -92,6 +94,8 @@ do_initial_setup (GCancellable     *cancellable,
   g_print (_("Welcome to %s"), pretty_name);
   g_print ("\n");
 
+  (void) readline (_("Press Enter to begin setup"));
+
   g_print (_("No user accounts found, and root password is locked"));
   g_print ("\n");
 
@@ -133,6 +137,7 @@ main (int    argc,
   gs_unref_variant GVariant *root_account_locked_reply = NULL;
   gs_unref_variant GVariant *root_account_locked_property = NULL;
   gs_unref_variant GVariant *root_account_locked_value = NULL;
+  gs_unref_object GObject *initial_setup_done_file = NULL;
   const char *root_account_path = NULL;
   gboolean have_user_accounts;
   gboolean root_is_locked;
@@ -140,6 +145,11 @@ main (int    argc,
   bindtextdomain (PACKAGE, LOCALEDIR);
   bind_textdomain_codeset (PACKAGE, "UTF-8");
   textdomain (PACKAGE);
+
+  initial_setup_done_file = g_file_file_new_for_path (LOCALSTATEDIR "initial-setup-done");
+
+  if (g_file_query_exists (initial_setup_done_file, NULL))
+    goto out;
   
   accountsservice = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM, 0, NULL,
                                                    "org.freedesktop.Accounts",
@@ -211,6 +221,14 @@ main (int    argc,
         goto out;
     }
 
+  if (!g_file_replace_contents (initial_setup_done_file, "", 0, NULL, FALSE,
+                                G_FILE_CREATE_REPLACE_DESTINATION, NULL,
+                                cancellable, error))
+    goto out;
+
+  gs_log_structured_print_id_v (INITIAL_SETUP_DONE_MSGID,
+                                "Initial setup complete");
+  
  out:
   if (local_error != NULL)
     {
